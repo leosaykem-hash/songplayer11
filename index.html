@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jukebox Pro - Standard</title>
+    <title>Jukebox Pro - Standard (Large QR)</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -13,21 +13,21 @@
         body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; overflow: hidden; }
         .hidden { display: none !important; }
         .container { max-width: 400px; margin: 0 auto; padding: 20px; text-align: center; height: 100vh; display: flex; flex-direction: column; justify-content: center; }
-        #host-view { display: grid; grid-template-columns: 1fr 350px; height: 100vh; }
+        #host-view { display: grid; grid-template-columns: 1fr 400px; height: 100vh; } /* ขยาย Sidebar นิดหน่อย */
         .video-container { background: #000; position: relative; display: flex; align-items: center; justify-content: center; }
-        #player { pointer-events: none; width: 100%; height: 80%; } /* บล็อคการคลิกที่จอเพื่อไม่ให้โฆษณาเด้งง่าย */
+        #player { pointer-events: none; width: 100%; height: 80%; }
         .controls-bar { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); padding: 12px 25px; border-radius: 40px; display: flex; align-items: center; gap: 15px; width: 85%; backdrop-filter: blur(15px); border: 1px solid #222; z-index: 10; }
         .seek-slider { flex: 1; accent-color: var(--accent); cursor: pointer; }
         .volume-slider { width: 70px; accent-color: var(--accent); cursor: pointer; }
         .time-display { font-size: 11px; font-family: monospace; color: var(--accent); min-width: 90px; }
         .ctrl-btn { background: none; border: none; color: #fff; cursor: pointer; font-size: 18px; }
-        .sidebar { background: #080808; border-left: 1px solid #151515; padding: 25px; overflow-y: auto; }
+        .sidebar { background: #080808; border-left: 1px solid #151515; padding: 30px; overflow-y: auto; text-align: center; } /* ขยาย Padding และจัดกลาง */
         .btn-minimal { background: rgba(255,255,255,0.03); border: 1px solid #222; color: #fff; padding: 14px; border-radius: 12px; cursor: pointer; font-size: 11px; width: 100%; transition: 0.3s; }
         .btn-minimal:hover { border-color: var(--accent); color: var(--accent); }
         .input-minimal { width: 100%; padding: 14px; background: #0a0a0a; border: 1px solid #222; color: #fff; border-radius: 12px; margin-bottom: 15px; text-align: center; outline: none; }
         .q-item { display: flex; align-items: center; gap: 12px; background: #111; padding: 10px; border-radius: 10px; margin-bottom: 10px; }
         .q-item img { width: 45px; border-radius: 5px; }
-        .q-title { font-size: 11px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .q-title { font-size: 11px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left;}
         #g-cover { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 20px; margin-bottom: 25px; }
         .progress-container { width: 100%; background: #222; height: 4px; border-radius: 2px; margin: 15px 0; }
         #progress-bar { background: var(--accent); height: 100%; width: 0%; border-radius: 2px; }
@@ -59,11 +59,14 @@
             </div>
         </div>
         <div class="sidebar">
-            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
-                <div><small style="color:var(--dim)">ROOM PIN</small><div id="host-pin" style="font-size: 32px; font-weight: 900; color: var(--accent);">----</div></div>
-                <div id="qrcode" style="background:#fff; padding:5px; border-radius:5px;"></div>
+            <div style="margin-bottom: 30px;">
+                <small style="color:var(--dim)">ROOM PIN</small>
+                <div id="host-pin" style="font-size: 48px; font-weight: 900; color: var(--accent);">----</div>
             </div>
-            <p style="font-size: 10px; color: var(--dim);">QUEUE</p>
+            
+            <div id="qrcode" style="background:#fff; padding:15px; border-radius:10px; display: inline-block; margin-bottom: 30px;"></div>
+            
+            <p style="font-size: 10px; color: var(--dim); text-align: left; letter-spacing: 1px;">UPCOMING QUEUE</p>
             <div id="host-q"></div>
             <button class="btn-minimal" onclick="skip()" style="margin-top:30px;">SKIP SONG ⏭️</button>
         </div>
@@ -74,7 +77,7 @@
         <h3 id="g-title" style="text-align: left;">Waiting...</h3>
         <div class="progress-container"><div id="progress-bar"></div></div>
         <div style="display:flex; justify-content: space-between; font-size: 11px; color: var(--dim);"><span id="time-cur">0:00</span><span id="time-dur">0:00</span></div>
-        <input type="text" id="song-url" placeholder="YouTube Link" class="input-minimal" style="margin-top: 40px;">
+        <input type="text" id="song-url" placeholder="Paste YouTube Link" class="input-minimal" style="margin-top: 40px;">
         <button class="btn-minimal" onclick="addSong()">ADD TO QUEUE</button>
     </div>
 
@@ -94,12 +97,29 @@
 
         function onYouTubeIframeAPIReady() { isApiReady = true; }
 
+        // --- ระบบ Auto-Join เมื่อสแกนลิงก์ ---
+        function checkAutoJoin() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomFromUrl = urlParams.get('room');
+            if (roomFromUrl && roomFromUrl.length === 4) {
+                CURRENT_ROOM = roomFromUrl;
+                document.getElementById('setup').classList.add('hidden');
+                document.getElementById('guest-view').classList.remove('hidden');
+                startSync(false);
+            }
+        }
+        // เรียกใช้ฟังก์ชัน Auto-Join ทันทีเมื่อโหลดหน้าเว็บ
+        checkAutoJoin();
+
         function initHost() {
             CURRENT_ROOM = Math.floor(1000 + Math.random() * 9000).toString();
             document.getElementById('setup').classList.add('hidden');
             document.getElementById('host-view').classList.remove('hidden');
             document.getElementById('host-pin').innerText = CURRENT_ROOM;
-            new QRCode(document.getElementById("qrcode"), { text: window.location.href.split('?')[0] + "?room=" + CURRENT_ROOM, width: 65, height: 65 });
+            
+            // [2] ขยายขนาด QR Code จาก 65 เป็น 200 พิกเซล
+            const hostUrl = window.location.href.split('?')[0] + "?room=" + CURRENT_ROOM;
+            new QRCode(document.getElementById("qrcode"), { text: hostUrl, width: 200, height: 200 });
             
             ytPlayer = new YT.Player('player', {
                 height: '100%', width: '100%',
