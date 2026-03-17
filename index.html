@@ -3,32 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jukebox Pro - Zero Ads</title>
+    <title>Jukebox Pro - Zero Ads Edition</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         :root { --bg: #050505; --accent: #00ff88; --text: #ffffff; --dim: #666; --card: #111; --danger: #ff4444; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; overflow-x: hidden; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; overflow-x: hidden; }
         .hidden { display: none !important; }
-        .container { max-width: 400px; margin: 0 auto; padding: 20px; text-align: center; min-height: 100vh; }
+        .container { max-width: 400px; margin: 0 auto; padding: 20px; text-align: center; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; }
+        
+        /* Host Layout */
         #host-view { display: grid; grid-template-columns: 1fr 400px; height: 100vh; }
         .video-container { background: #000; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        
-        /* ใช้ Iframe แบบ Sandbox เพื่อบล็อกโฆษณาเพิ่ม */
         #player-frame { width: 100%; height: 100%; border: none; }
         
         .controls-bar { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); padding: 12px 25px; border-radius: 40px; display: flex; align-items: center; gap: 15px; width: 85%; backdrop-filter: blur(15px); border: 1px solid #222; z-index: 10; }
+        
+        /* Sidebar */
         .sidebar { background: #080808; border-left: 1px solid #151515; padding: 30px; overflow-y: auto; text-align: center; }
         .btn-minimal { background: rgba(255,255,255,0.03); border: 1px solid #222; color: #fff; padding: 14px; border-radius: 12px; cursor: pointer; font-size: 11px; width: 100%; transition: 0.3s; }
         .btn-minimal:hover { border-color: var(--accent); color: var(--accent); }
         .input-minimal { width: 100%; padding: 14px; background: #0a0a0a; border: 1px solid #222; color: #fff; border-radius: 12px; margin-bottom: 15px; text-align: center; outline: none; }
+        
+        /* Queue Items */
         .q-item { display: flex; align-items: center; gap: 12px; background: #111; padding: 10px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #1a1a1a; }
         .q-item img { width: 45px; border-radius: 5px; }
         .q-title { font-size: 11px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
-        #g-cover { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 20px; margin-bottom: 20px; }
+        
+        /* Guest View */
+        #g-cover { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .progress-container { width: 100%; background: #222; height: 4px; border-radius: 2px; margin: 15px 0; }
-        #progress-bar { background: var(--accent); height: 100%; width: 0%; border-radius: 2px; }
+        #progress-bar { background: var(--accent); height: 100%; width: 100%; border-radius: 2px; }
         .queue-badge { background: var(--accent); color: #000; padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: bold; margin-bottom: 15px; display: inline-block; }
         .section-label { font-size: 10px; color: var(--dim); text-align: left; letter-spacing: 2px; text-transform: uppercase; margin: 25px 0 10px 0; }
     </style>
@@ -38,7 +44,7 @@
     <div id="setup" class="container">
         <h1 style="letter-spacing: 12px; font-weight: 200; margin-bottom: 50px; color: var(--accent);">JUKEBOX</h1>
         <div id="main-actions">
-            <button class="btn-minimal" onclick="initHost()">CREATE HOST (NO ADS)</button>
+            <button class="btn-minimal" onclick="initHost()">CREATE HOST</button>
             <button class="btn-minimal" style="margin-top: 15px;" onclick="showJoin()">JOIN SESSION</button>
         </div>
         <div id="join-box" class="hidden">
@@ -49,11 +55,11 @@
 
     <div id="host-view" class="hidden">
         <div class="video-container">
-            <iframe id="player-frame" src="" allow="autoplay; encrypted-media" sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
+            <iframe id="player-frame" src="" allow="autoplay; encrypted-media; fullscreen" sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"></iframe>
             <div class="controls-bar">
-                <div style="font-size: 12px; color: var(--accent);">AUTO-PLAY MODE</div>
+                <div style="font-size: 11px; color: var(--accent); font-weight: bold; letter-spacing: 1px;">AUTO-PLAY ACTIVE</div>
                 <div style="flex: 1;"></div>
-                <button class="btn-minimal" style="width:auto; padding:5px 15px;" onclick="skip()">SKIP ⏭️</button>
+                <button class="btn-minimal" style="width:auto; padding:8px 20px; border-color: var(--danger); color: var(--danger);" onclick="skip()">SKIP SONG ⏭️</button>
             </div>
         </div>
         <div class="sidebar">
@@ -61,7 +67,7 @@
                 <small style="color:var(--dim)">ROOM PIN</small>
                 <div id="host-pin" style="font-size: 48px; font-weight: 900; color: var(--accent);">----</div>
             </div>
-            <div id="qrcode" style="background:#fff; padding:10px; border-radius:8px; display: inline-block; margin-bottom: 30px;"></div>
+            <div id="qrcode" style="background:#fff; padding:15px; border-radius:10px; display: inline-block; margin-bottom: 30px;"></div>
             <p class="section-label">UPCOMING QUEUE</p>
             <div id="host-q"></div>
         </div>
@@ -70,12 +76,15 @@
     <div id="guest-view" class="hidden container">
         <div id="my-q-pos" class="hidden"></div>
         <img id="g-cover" src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJueGZ4eGZ4eGZ4eGZ4eGZ4eGZ4eGZ4eGZ4eGZ4eGZ4JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/3o7TKMGpxx6rI5zN60/giphy.gif">
-        <h3 id="g-title" style="text-align: left; margin: 0;">Jukebox Connected</h3>
-        <div class="progress-container"><div id="progress-bar" style="width: 100%"></div></div>
-        <input type="text" id="song-url" placeholder="Paste YouTube Link" class="input-minimal" style="margin-top: 20px;">
+        <h3 id="g-title" style="text-align: left; margin: 0; font-size: 18px;">Connected to Room</h3>
+        <div class="progress-container"><div id="progress-bar"></div></div>
+        
+        <input type="text" id="song-url" placeholder="Paste YouTube Link" class="input-minimal" style="margin-top: 30px;">
         <button class="btn-minimal" onclick="addSong()">ADD TO QUEUE</button>
+
         <p class="section-label">UPCOMING QUEUE</p>
         <div id="guest-q"></div>
+        <div style="height: 50px;"></div>
     </div>
 
     <script>
@@ -104,7 +113,7 @@
             document.getElementById('setup').classList.add('hidden');
             document.getElementById('host-view').classList.remove('hidden');
             document.getElementById('host-pin').innerText = CURRENT_ROOM;
-            new QRCode(document.getElementById("qrcode"), { text: window.location.href.split('?')[0] + "?room=" + CURRENT_ROOM, width: 180, height: 180 });
+            new QRCode(document.getElementById("qrcode"), { text: window.location.href.split('?')[0] + "?room=" + CURRENT_ROOM, width: 200, height: 200 });
             startSync(true);
         }
 
@@ -113,7 +122,6 @@
                 const d = s.val(); 
                 const newQueue = d ? Object.entries(d).map(([k, v]) => ({ k, ...v })) : [];
                 
-                // เช็คว่าถ้าเพลงเปลี่ยน ให้โหลดวิดีโอใหม่
                 if (isHost && newQueue.length > 0) {
                     if (queue.length === 0 || newQueue[0].vid !== queue[0].vid) {
                         loadNoAdsVideo(newQueue[0].vid);
@@ -126,12 +134,24 @@
         }
 
         function loadNoAdsVideo(vid) {
-            // ใช้ Piped Proxy Instance (สามารถเปลี่ยน instance ได้ถ้าอันนี้ล่ม)
-            const proxyUrl = `https://pipedapi.kavin.rocks/embed/${vid}?autoplay=1`;
-            // หรือใช้ระบบ No-Cookie ของ YouTube เองแต่ใส่ Sandbox เข้มงวด
-            const fallbackUrl = `https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&controls=1&modestbranding=1&rel=0`;
+            // ระบบสลับ Instance เพื่อป้องกันจอดำ
+            const instances = [
+                `https://yewtu.be/embed/${vid}?autoplay=1`,
+                `https://vid.puffyan.us/embed/${vid}?autoplay=1`,
+                `https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&rel=0&controls=1`
+            ];
             
-            document.getElementById('player-frame').src = proxyUrl;
+            const player = document.getElementById('player-frame');
+            player.src = instances[0];
+
+            // ถ้าโหลดไม่สำเร็จใน 5 วินาที ให้ลองอันสำรอง
+            setTimeout(() => {
+                try {
+                    if(!player.contentWindow || player.contentWindow.length === 0) {
+                        player.src = instances[2];
+                    }
+                } catch(e) { player.src = instances[2]; }
+            }, 5000);
         }
 
         function renderQueues(isHost) {
@@ -146,7 +166,7 @@
                 document.getElementById('guest-q').innerHTML = qHTML || '<p style="font-size:11px; color:#333;">Queue is empty</p>';
                 const myFirst = queue.map((s, i) => ({...s, i})).find(s => s.uid === MY_ID);
                 const b = document.getElementById('my-q-pos');
-                if(myFirst) { b.innerHTML = `<div class="queue-badge">YOUR SONG: ${myFirst.i} IN QUEUE</div>`; b.classList.remove('hidden'); }
+                if(myFirst) { b.innerHTML = `<div class="queue-badge">NEXT IN ${myFirst.i} QUEUE${myFirst.i > 1 ? 'S' : ''}</div>`; b.classList.remove('hidden'); }
                 else b.classList.add('hidden');
             }
         }
