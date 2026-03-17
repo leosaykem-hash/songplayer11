@@ -3,40 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jukebox Pro - Zero Ads Edition</title>
+    <title>Jukebox Pro - Ultra Ad-Free</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
     <style>
         :root { --bg: #050505; --accent: #00ff88; --text: #ffffff; --dim: #666; --card: #111; --danger: #ff4444; }
         body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; overflow-x: hidden; }
         .hidden { display: none !important; }
-        .container { max-width: 400px; margin: 0 auto; padding: 20px; text-align: center; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; }
-        
-        /* Host Layout */
+        .container { max-width: 400px; margin: 0 auto; padding: 20px; text-align: center; min-height: 100vh; }
         #host-view { display: grid; grid-template-columns: 1fr 400px; height: 100vh; }
-        .video-container { background: #000; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        #player-frame { width: 100%; height: 100%; border: none; }
-        
+        .video-container { background: #000; position: relative; display: flex; align-items: center; justify-content: center; }
+        #player { width: 100%; height: 80%; pointer-events: none; }
         .controls-bar { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); padding: 12px 25px; border-radius: 40px; display: flex; align-items: center; gap: 15px; width: 85%; backdrop-filter: blur(15px); border: 1px solid #222; z-index: 10; }
-        
-        /* Sidebar */
         .sidebar { background: #080808; border-left: 1px solid #151515; padding: 30px; overflow-y: auto; text-align: center; }
         .btn-minimal { background: rgba(255,255,255,0.03); border: 1px solid #222; color: #fff; padding: 14px; border-radius: 12px; cursor: pointer; font-size: 11px; width: 100%; transition: 0.3s; }
         .btn-minimal:hover { border-color: var(--accent); color: var(--accent); }
         .input-minimal { width: 100%; padding: 14px; background: #0a0a0a; border: 1px solid #222; color: #fff; border-radius: 12px; margin-bottom: 15px; text-align: center; outline: none; }
-        
-        /* Queue Items */
         .q-item { display: flex; align-items: center; gap: 12px; background: #111; padding: 10px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #1a1a1a; }
         .q-item img { width: 45px; border-radius: 5px; }
         .q-title { font-size: 11px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
-        
-        /* Guest View */
-        #g-cover { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        #g-cover { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 20px; margin-bottom: 20px; }
         .progress-container { width: 100%; background: #222; height: 4px; border-radius: 2px; margin: 15px 0; }
-        #progress-bar { background: var(--accent); height: 100%; width: 100%; border-radius: 2px; }
-        .queue-badge { background: var(--accent); color: #000; padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: bold; margin-bottom: 15px; display: inline-block; }
-        .section-label { font-size: 10px; color: var(--dim); text-align: left; letter-spacing: 2px; text-transform: uppercase; margin: 25px 0 10px 0; }
+        #progress-bar { background: var(--accent); height: 100%; width: 0%; border-radius: 2px; }
+        .seek-slider { flex: 1; accent-color: var(--accent); cursor: pointer; }
+        .volume-slider { width: 70px; accent-color: var(--accent); cursor: pointer; }
     </style>
 </head>
 <body>
@@ -55,11 +47,12 @@
 
     <div id="host-view" class="hidden">
         <div class="video-container">
-            <iframe id="player-frame" src="" allow="autoplay; encrypted-media; fullscreen" sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"></iframe>
+            <div id="player"></div>
             <div class="controls-bar">
-                <div style="font-size: 11px; color: var(--accent); font-weight: bold; letter-spacing: 1px;">AUTO-PLAY ACTIVE</div>
-                <div style="flex: 1;"></div>
-                <button class="btn-minimal" style="width:auto; padding:8px 20px; border-color: var(--danger); color: var(--danger);" onclick="skip()">SKIP SONG ⏭️</button>
+                <button class="btn-minimal" style="width:auto; padding:5px 15px;" onclick="togglePlay()" id="play-btn">⏸️</button>
+                <div id="host-time" style="font-size: 11px; min-width: 90px;">0:00 / 0:00</div>
+                <input type="range" id="seek-slider" class="seek-slider" value="0" step="0.1">
+                <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="100">
             </div>
         </div>
         <div class="sidebar">
@@ -67,24 +60,20 @@
                 <small style="color:var(--dim)">ROOM PIN</small>
                 <div id="host-pin" style="font-size: 48px; font-weight: 900; color: var(--accent);">----</div>
             </div>
-            <div id="qrcode" style="background:#fff; padding:15px; border-radius:10px; display: inline-block; margin-bottom: 30px;"></div>
-            <p class="section-label">UPCOMING QUEUE</p>
+            <div id="qrcode" style="background:#fff; padding:10px; border-radius:8px; display: inline-block; margin-bottom: 30px;"></div>
+            <p style="font-size: 10px; color: var(--dim); text-align: left; letter-spacing: 2px;">UPCOMING QUEUE</p>
             <div id="host-q"></div>
+            <button class="btn-minimal" onclick="skip()" style="margin-top:30px; color: var(--danger); border-color: var(--danger);">SKIP SONG ⏭️</button>
         </div>
     </div>
 
     <div id="guest-view" class="hidden container">
-        <div id="my-q-pos" class="hidden"></div>
-        <img id="g-cover" src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJueGZ4eGZ4eGZ4eGZ4eGZ4eGZ4eGZ4eGZ4eGZ4eGZ4JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/3o7TKMGpxx6rI5zN60/giphy.gif">
-        <h3 id="g-title" style="text-align: left; margin: 0; font-size: 18px;">Connected to Room</h3>
+        <img id="g-cover" src="">
+        <h3 id="g-title" style="text-align: left; margin: 0; font-size: 18px;">Waiting...</h3>
         <div class="progress-container"><div id="progress-bar"></div></div>
-        
-        <input type="text" id="song-url" placeholder="Paste YouTube Link" class="input-minimal" style="margin-top: 30px;">
+        <input type="text" id="song-url" placeholder="Paste YouTube Link" class="input-minimal">
         <button class="btn-minimal" onclick="addSong()">ADD TO QUEUE</button>
-
-        <p class="section-label">UPCOMING QUEUE</p>
-        <div id="guest-q"></div>
-        <div style="height: 50px;"></div>
+        <div id="guest-q" style="margin-top: 20px;"></div>
     </div>
 
     <script>
@@ -99,80 +88,74 @@
 
         let MY_ID = localStorage.getItem('jukebox_uid') || 'u' + Math.random().toString(36).substr(2, 9);
         localStorage.setItem('jukebox_uid', MY_ID);
-        let CURRENT_ROOM = "", queue = [];
-
-        function checkAutoJoin() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const r = urlParams.get('room');
-            if (r) { CURRENT_ROOM = r; document.getElementById('setup').classList.add('hidden'); document.getElementById('guest-view').classList.remove('hidden'); startSync(false); }
-        }
-        checkAutoJoin();
+        let CURRENT_ROOM = "", queue = [], ytPlayer;
 
         function initHost() {
             CURRENT_ROOM = Math.floor(1000 + Math.random() * 9000).toString();
             document.getElementById('setup').classList.add('hidden');
             document.getElementById('host-view').classList.remove('hidden');
             document.getElementById('host-pin').innerText = CURRENT_ROOM;
-            new QRCode(document.getElementById("qrcode"), { text: window.location.href.split('?')[0] + "?room=" + CURRENT_ROOM, width: 200, height: 200 });
+            new QRCode(document.getElementById("qrcode"), { text: window.location.href.split('?')[0] + "?room=" + CURRENT_ROOM, width: 180, height: 180 });
+            
+            ytPlayer = new YT.Player('player', {
+                height: '100%', width: '100%',
+                playerVars: { 'autoplay': 1, 'controls': 0, 'modestbranding': 1, 'rel': 0 },
+                events: { 
+                    'onStateChange': (e) => { 
+                        if(e.data == YT.PlayerState.ENDED) skip();
+                        // สั่งเช็คโฆษณาเมื่อสถานะเปลี่ยน
+                        checkAds();
+                    },
+                    'onReady': () => { setInterval(checkAds, 500); } // เช็คโฆษณาทุก 0.5 วินาที
+                }
+            });
+            setInterval(syncProgress, 1000);
             startSync(true);
+        }
+
+        // ฟังก์ชันลับสำหรับ Skip โฆษณาอัตโนมัติ
+        function checkAds() {
+            if(ytPlayer && ytPlayer.getAdState && ytPlayer.getAdState() === 1) {
+                ytPlayer.setVolume(0); // ปิดเสียงโฆษณา
+                ytPlayer.seekTo(ytPlayer.getDuration()); // เลื่อนไปจบโฆษณาทันที
+            } else if (ytPlayer) {
+                ytPlayer.setVolume(document.getElementById('volume-slider').value);
+            }
+        }
+
+        function syncProgress() {
+            if(ytPlayer && ytPlayer.getCurrentTime) {
+                const cur = ytPlayer.getCurrentTime(); const dur = ytPlayer.getDuration();
+                document.getElementById('host-time').innerText = `${formatTime(cur)} / ${formatTime(dur)}`;
+                document.getElementById('seek-slider').value = (cur/dur)*100 || 0;
+                db.ref('rooms/'+CURRENT_ROOM+'/playing').update({ vid: queue[0]?.vid, title: queue[0]?.title, cur, dur });
+            }
         }
 
         function startSync(isHost) {
             db.ref('rooms/'+CURRENT_ROOM+'/queue').on('value', s => {
-                const d = s.val(); 
-                const newQueue = d ? Object.entries(d).map(([k, v]) => ({ k, ...v })) : [];
-                
-                if (isHost && newQueue.length > 0) {
-                    if (queue.length === 0 || newQueue[0].vid !== queue[0].vid) {
-                        loadNoAdsVideo(newQueue[0].vid);
-                        db.ref('rooms/'+CURRENT_ROOM+'/playing').set({ vid: newQueue[0].vid, title: newQueue[0].title });
-                    }
-                }
-                queue = newQueue;
+                const d = s.val(); queue = d ? Object.entries(d).map(([k, v]) => ({ k, ...v })) : [];
                 renderQueues(isHost);
+                if(isHost && ytPlayer && ytPlayer.getPlayerState && ytPlayer.getPlayerState() != 1 && queue.length > 0) playNext();
             });
-        }
 
-        function loadNoAdsVideo(vid) {
-            // ระบบสลับ Instance เพื่อป้องกันจอดำ
-            const instances = [
-                `https://yewtu.be/embed/${vid}?autoplay=1`,
-                `https://vid.puffyan.us/embed/${vid}?autoplay=1`,
-                `https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&rel=0&controls=1`
-            ];
-            
-            const player = document.getElementById('player-frame');
-            player.src = instances[0];
-
-            // ถ้าโหลดไม่สำเร็จใน 5 วินาที ให้ลองอันสำรอง
-            setTimeout(() => {
-                try {
-                    if(!player.contentWindow || player.contentWindow.length === 0) {
-                        player.src = instances[2];
-                    }
-                } catch(e) { player.src = instances[2]; }
-            }, 5000);
+            db.ref('rooms/'+CURRENT_ROOM+'/playing').on('value', s => {
+                const d = s.val(); if(!d || isHost) return;
+                document.getElementById('g-title').innerText = d.title;
+                document.getElementById('g-cover').src = `https://img.youtube.com/vi/${d.vid}/maxresdefault.jpg`;
+                document.getElementById('progress-bar').style.width = (d.cur/d.dur*100) + "%";
+            });
         }
 
         function renderQueues(isHost) {
             const qHTML = queue.slice(1).map(item => `
-                <div class="q-item">
-                    <img src="https://img.youtube.com/vi/${item.vid}/mqdefault.jpg">
-                    <div class="q-title">${item.title}</div>
-                </div>
+                <div class="q-item"><img src="https://img.youtube.com/vi/${item.vid}/mqdefault.jpg"><div class="q-title">${item.title}</div></div>
             `).join('');
-            if(isHost) document.getElementById('host-q').innerHTML = qHTML;
-            else {
-                document.getElementById('guest-q').innerHTML = qHTML || '<p style="font-size:11px; color:#333;">Queue is empty</p>';
-                const myFirst = queue.map((s, i) => ({...s, i})).find(s => s.uid === MY_ID);
-                const b = document.getElementById('my-q-pos');
-                if(myFirst) { b.innerHTML = `<div class="queue-badge">NEXT IN ${myFirst.i} QUEUE${myFirst.i > 1 ? 'S' : ''}</div>`; b.classList.remove('hidden'); }
-                else b.classList.add('hidden');
-            }
+            document.getElementById(isHost ? 'host-q' : 'guest-q').innerHTML = qHTML;
         }
 
-        function skip() { if(queue.length > 0) db.ref('rooms/'+CURRENT_ROOM+'/queue/'+queue[0].k).remove(); }
-        
+        function playNext() { if(queue.length > 0) ytPlayer.loadVideoById(queue[0].vid); }
+        function skip() { if(queue.length > 0) db.ref('rooms/'+CURRENT_ROOM+'/queue/'+queue[0].k).remove(); playNext(); }
         async function addSong() {
             const v = document.getElementById('song-url').value;
             const id = v.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/)?.[1];
@@ -184,8 +167,12 @@
             }
         }
 
+        function togglePlay() { const s = ytPlayer.getPlayerState(); if(s==1){ytPlayer.pauseVideo(); document.getElementById('play-btn').innerText="▶️";}else{ytPlayer.playVideo(); document.getElementById('play-btn').innerText="⏸️";} }
+        function formatTime(s) { const m=Math.floor(s/60), sec=Math.floor(s%60); return `${m}:${sec<10?'0'+sec:sec}`; }
         function showJoin() { document.getElementById('main-actions').classList.add('hidden'); document.getElementById('join-box').classList.remove('hidden'); }
         function initGuest() { CURRENT_ROOM = document.getElementById('pin-in').value; document.getElementById('setup').classList.add('hidden'); document.getElementById('guest-view').classList.remove('hidden'); startSync(false); }
+        document.getElementById('volume-slider').oninput = (e) => ytPlayer.setVolume(e.target.value);
+        document.getElementById('seek-slider').oninput = (e) => ytPlayer.seekTo((e.target.value/100)*ytPlayer.getDuration());
     </script>
 </body>
 </html>
