@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jukebox Pro - Ultra Ad-Free</title>
+    <title>Jukebox Pro - Invisible Ghost Edition</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -13,17 +13,28 @@
         body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; overflow-x: hidden; }
         .hidden { display: none !important; }
         .container { max-width: 400px; margin: 0 auto; padding: 20px; text-align: center; min-height: 100vh; }
+        
+        /* Host Layout */
         #host-view { display: grid; grid-template-columns: 1fr 400px; height: 100vh; }
         .video-container { background: #000; position: relative; display: flex; align-items: center; justify-content: center; }
-        #player { width: 100%; height: 80%; pointer-events: none; }
+        
+        /* ซ่อน Player เริ่มต้นด้วย Opacity 0 เพื่อความเนียน */
+        #player { width: 100%; height: 80%; opacity: 0; transition: opacity 0.5s; pointer-events: none; }
+        
         .controls-bar { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); padding: 12px 25px; border-radius: 40px; display: flex; align-items: center; gap: 15px; width: 85%; backdrop-filter: blur(15px); border: 1px solid #222; z-index: 10; }
+        
+        /* Sidebar */
         .sidebar { background: #080808; border-left: 1px solid #151515; padding: 30px; overflow-y: auto; text-align: center; }
         .btn-minimal { background: rgba(255,255,255,0.03); border: 1px solid #222; color: #fff; padding: 14px; border-radius: 12px; cursor: pointer; font-size: 11px; width: 100%; transition: 0.3s; }
         .btn-minimal:hover { border-color: var(--accent); color: var(--accent); }
         .input-minimal { width: 100%; padding: 14px; background: #0a0a0a; border: 1px solid #222; color: #fff; border-radius: 12px; margin-bottom: 15px; text-align: center; outline: none; }
+        
+        /* Queue Items */
         .q-item { display: flex; align-items: center; gap: 12px; background: #111; padding: 10px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #1a1a1a; }
         .q-item img { width: 45px; border-radius: 5px; }
         .q-title { font-size: 11px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+        
+        /* Guest View */
         #g-cover { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 20px; margin-bottom: 20px; }
         .progress-container { width: 100%; background: #222; height: 4px; border-radius: 2px; margin: 15px 0; }
         #progress-bar { background: var(--accent); height: 100%; width: 0%; border-radius: 2px; }
@@ -48,6 +59,9 @@
     <div id="host-view" class="hidden">
         <div class="video-container">
             <div id="player"></div>
+            <div id="ad-overlay" style="position:absolute; color:var(--accent); font-size:12px; display:none;">
+                <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJueGZ4eGZ4eGZ4eGZ4eGZ4eGZ4eGZ4eGZ4eGZ4eGZ4JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/3o7TKMGpxx6rI5zN60/giphy.gif" style="width: 50px; opacity: 0.5;">
+            </div>
             <div class="controls-bar">
                 <button class="btn-minimal" style="width:auto; padding:5px 15px;" onclick="togglePlay()" id="play-btn">⏸️</button>
                 <div id="host-time" style="font-size: 11px; min-width: 90px;">0:00 / 0:00</div>
@@ -103,22 +117,31 @@
                 events: { 
                     'onStateChange': (e) => { 
                         if(e.data == YT.PlayerState.ENDED) skip();
-                        // สั่งเช็คโฆษณาเมื่อสถานะเปลี่ยน
-                        checkAds();
+                        checkAds(); // เช็คโฆษณาเมื่อสถานะเปลี่ยน
                     },
-                    'onReady': () => { setInterval(checkAds, 500); } // เช็คโฆษณาทุก 0.5 วินาที
+                    'onReady': () => { setInterval(checkAds, 100); } // เช็คถี่ขึ้นทุก 0.1 วินาที
                 }
             });
             setInterval(syncProgress, 1000);
             startSync(true);
         }
 
-        // ฟังก์ชันลับสำหรับ Skip โฆษณาอัตโนมัติ
+        // ฟังก์ชันลับสำหรับซ่อนภาพและปิดเสียงโฆษณาแบบ "ไร้ตัวตน" (Stealth Mode)
         function checkAds() {
+            const playerEl = document.getElementById('player');
+            const overlay = document.getElementById('ad-overlay');
+            
             if(ytPlayer && ytPlayer.getAdState && ytPlayer.getAdState() === 1) {
-                ytPlayer.setVolume(0); // ปิดเสียงโฆษณา
-                ytPlayer.seekTo(ytPlayer.getDuration()); // เลื่อนไปจบโฆษณาทันที
-            } else if (ytPlayer) {
+                // เจอก็ปิดเสียงทันที! และซ่อนภาพ
+                ytPlayer.setVolume(0); 
+                playerEl.style.opacity = "0"; 
+                overlay.style.display = "block"; // แสดงหน้าจอ Loading แทน
+                ytPlayer.seekTo(ytPlayer.getDuration()); // ดีดไปตอนจบของโฆษณา
+                console.log("Ad Blocked Silently & Invisibly!");
+            } else if (ytPlayer && ytPlayer.getPlayerState() === 1) {
+                // เมื่อเข้าสู่เพลงปกติ ให้กลับมาแสดงตัวและเปิดเสียงตามค่าที่ตั้งไว้
+                playerEl.style.opacity = "1";
+                overlay.style.display = "none";
                 ytPlayer.setVolume(document.getElementById('volume-slider').value);
             }
         }
