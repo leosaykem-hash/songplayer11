@@ -3,94 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jukebox Pro - Admin & Security Edition</title>
+    <title>Jukebox Pro - Ultra Ad-Free</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         :root { --bg: #050505; --accent: #00ff88; --text: #ffffff; --dim: #666; --card: #111; --danger: #ff4444; }
-        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; overflow-x: hidden; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; overflow: hidden; }
         .hidden { display: none !important; }
-        .container { max-width: 380px; margin: 0 auto; padding: 20px; text-align: center; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; }
         
-        /* UI Elements */
-        .btn-minimal { background: rgba(255,255,255,0.03); border: 1px solid #222; color: #fff; padding: 12px; border-radius: 10px; cursor: pointer; font-size: 11px; width: 100%; transition: 0.3s; text-transform: uppercase; letter-spacing: 1px; }
-        .btn-minimal:hover { border-color: var(--accent); color: var(--accent); }
-        .input-minimal { width: 100%; padding: 14px; background: #0a0a0a; border: 1px solid #222; color: #fff; border-radius: 12px; margin-bottom: 12px; text-align: center; box-sizing: border-box; outline: none; }
-        .input-minimal:focus { border-color: var(--accent); }
-
-        /* Host View Layout */
+        /* Layouts */
+        .container { max-width: 400px; margin: 0 auto; padding: 20px; text-align: center; height: 100vh; display: flex; flex-direction: column; justify-content: center; }
         #host-view { display: grid; grid-template-columns: 1fr 350px; height: 100vh; }
-        .sidebar { background: #080808; border-left: 1px solid #151515; padding: 20px; overflow-y: auto; text-align: left; }
-        .q-item { display: flex; align-items: center; gap: 10px; background: #111; padding: 8px; border-radius: 8px; margin-bottom: 8px; }
-        .q-item img { width: 50px; border-radius: 4px; }
-        .q-title { font-size: 10px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        /* Video Player Styling */
+        .video-container { background: #000; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        video { width: 95%; max-height: 85%; border-radius: 15px; box-shadow: 0 0 40px rgba(0, 255, 136, 0.2); }
+        
+        /* Custom Controls */
+        .controls-bar { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); padding: 12px 25px; border-radius: 40px; display: flex; align-items: center; gap: 15px; width: 85%; backdrop-filter: blur(15px); border: 1px solid #222; z-index: 10; transition: 0.3s; }
+        .seek-slider { flex: 1; accent-color: var(--accent); cursor: pointer; height: 5px; }
+        .volume-slider { width: 70px; accent-color: var(--accent); cursor: pointer; height: 5px; }
+        .time-display { font-size: 11px; font-family: monospace; color: var(--accent); min-width: 90px; }
+        .ctrl-btn { background: none; border: none; color: #fff; cursor: pointer; font-size: 18px; transition: 0.2s; }
+        .ctrl-btn:hover { transform: scale(1.2); color: var(--accent); }
 
-        /* Guest View - Player Style */
+        /* Sidebar & Elements */
+        .sidebar { background: #080808; border-left: 1px solid #151515; padding: 25px; overflow-y: auto; }
+        .btn-minimal { background: rgba(255,255,255,0.03); border: 1px solid #222; color: #fff; padding: 14px; border-radius: 12px; cursor: pointer; font-size: 11px; width: 100%; transition: 0.3s; letter-spacing: 1px; }
+        .btn-minimal:hover { border-color: var(--accent); color: var(--accent); }
+        .input-minimal { width: 100%; padding: 14px; background: #0a0a0a; border: 1px solid #222; color: #fff; border-radius: 12px; margin-bottom: 15px; text-align: center; outline: none; }
+        .q-item { display: flex; align-items: center; gap: 12px; background: #111; padding: 10px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #1a1a1a; }
+        .q-item img { width: 45px; border-radius: 5px; }
+        .q-title { font-size: 11px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* Guest Player UI */
         #g-cover { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); margin-bottom: 25px; }
         .progress-container { width: 100%; background: #222; height: 4px; border-radius: 2px; margin: 15px 0; }
-        #progress-bar { background: var(--accent); height: 100%; width: 0%; border-radius: 2px; transition: 0.3s; }
-        .time-info { display: flex; justify-content: space-between; font-size: 10px; color: var(--dim); font-family: monospace; }
-
-        /* Admin/Dev View */
-        .admin-card { background: var(--card); border: 1px solid #222; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
-        .dev-link { font-size: 9px; color: #111; margin-top: 40px; cursor: pointer; transition: 0.3s; }
-        .dev-link:hover { color: #333; }
-        .ban-btn { background: var(--danger); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 10px; }
+        #progress-bar { background: var(--accent); height: 100%; width: 0%; border-radius: 2px; }
+        .dev-link { font-size: 9px; color: #111; margin-top: 40px; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div id="setup" class="container">
-        <h1 style="letter-spacing: 10px; font-weight: 200; margin-bottom: 40px;">JUKEBOX</h1>
+        <h1 style="letter-spacing: 12px; font-weight: 200; margin-bottom: 50px; color: var(--accent);">JUKEBOX</h1>
         <div id="main-actions">
-            <button class="btn-minimal" onclick="initHost()">CREATE ROOM</button>
-            <button class="btn-minimal" style="margin-top: 10px;" onclick="showJoin()">JOIN SESSION</button>
+            <button class="btn-minimal" onclick="initHost()">CREATE HOST (NO ADS)</button>
+            <button class="btn-minimal" style="margin-top: 15px;" onclick="showJoin()">JOIN AS GUEST</button>
         </div>
         <div id="join-box" class="hidden">
-            <input type="text" id="pin-in" maxlength="4" placeholder="ENTER PIN" class="input-minimal">
-            <button class="btn-minimal" onclick="initGuest()">CONNECT</button>
+            <input type="text" id="pin-in" maxlength="4" placeholder="ENTER ROOM PIN" class="input-minimal">
+            <button class="btn-minimal" onclick="initGuest()">CONNECT NOW</button>
         </div>
         <div class="dev-link" onclick="askDev()">are you dev?</div>
     </div>
 
-    <div id="admin-view" class="hidden" style="padding: 40px; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: var(--accent); letter-spacing: 2px;">DEV MONITOR</h2>
-        <div id="room-list">Scanning network...</div>
-        <button class="btn-minimal" onclick="location.reload()" style="width:auto; margin-top:20px;">Exit Dev Mode</button>
+    <div id="admin-view" class="hidden" style="padding: 40px; overflow-y:auto; height:100vh;">
+        <h2 style="color: var(--accent);">DEV MONITOR</h2>
+        <div id="room-list">Scanning...</div>
+        <button class="btn-minimal" onclick="location.reload()" style="width:200px; margin-top:20px;">BACK</button>
     </div>
 
     <div id="host-view" class="hidden">
-        <div style="background: #000; flex: 1; display: flex; align-items: center;"><div id="player"></div></div>
-        <div class="sidebar">
-            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <div>
-                    <small style="color:var(--dim)">ROOM PIN</small>
-                    <div id="host-pin" style="font-size: 28px; font-weight: 900; color: var(--accent);">----</div>
-                </div>
-                <div id="qrcode" style="background:#fff; padding:4px; border-radius:4px;"></div>
+        <div class="video-container">
+            <video id="main-player"></video>
+            <div class="controls-bar">
+                <button class="ctrl-btn" onclick="togglePlay()" id="play-btn">⏸️</button>
+                <div class="time-display" id="host-time">0:00 / 0:00</div>
+                <input type="range" id="seek-slider" class="seek-slider" value="0" step="0.1">
+                <span style="font-size: 12px;">🔊</span>
+                <input type="range" id="volume-slider" class="volume-slider" min="0" max="1" step="0.01" value="1">
             </div>
-            <p style="font-size: 10px; color: var(--dim); letter-spacing: 1px;">UPCOMING QUEUE</p>
+        </div>
+        <div class="sidebar">
+            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                <div><small style="color:var(--dim)">ROOM PIN</small><div id="host-pin" style="font-size: 32px; font-weight: 900; color: var(--accent);">----</div></div>
+                <div id="qrcode" style="background:#fff; padding:5px; border-radius:5px;"></div>
+            </div>
+            <p style="font-size: 10px; color: var(--dim); letter-spacing: 2px;">UPCOMING QUEUE</p>
             <div id="host-q"></div>
-            <button class="btn-minimal" onclick="skip()" style="margin-top:20px; border-color: var(--dim);">SKIP CURRENT ⏭️</button>
+            <button class="btn-minimal" onclick="skip()" style="margin-top:30px; border-color: var(--danger); color: var(--danger);">SKIP SONG ⏭️</button>
         </div>
     </div>
 
     <div id="guest-view" class="hidden container" style="justify-content: flex-start; padding-top: 50px;">
         <img id="g-cover" src="">
         <div style="text-align: left; width: 100%;">
-            <h3 id="g-title" style="margin: 0; font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Waiting...</h3>
-            <p style="color: var(--dim); margin: 5px 0 20px 0; font-size: 13px;">YouTube Jukebox</p>
+            <h3 id="g-title" style="margin: 0; font-size: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Waiting...</h3>
+            <p style="color: var(--dim); margin: 5px 0 25px 0; font-size: 14px;">Playing Ad-Free</p>
         </div>
         <div class="progress-container"><div id="progress-bar"></div></div>
-        <div class="time-info"><span id="time-cur">0:00</span><span id="time-dur">0:00</span></div>
-        
-        <input type="text" id="song-url" placeholder="Paste YouTube Link" class="input-minimal" style="margin-top: 30px;">
+        <div class="time-info" style="display:flex; justify-content: space-between; font-size: 11px; color: var(--dim); font-family: monospace;">
+            <span id="time-cur">0:00</span><span id="time-dur">0:00</span>
+        </div>
+        <input type="text" id="song-url" placeholder="Paste YouTube Link Here" class="input-minimal" style="margin-top: 40px;">
         <button class="btn-minimal" onclick="addSong()">ADD TO QUEUE</button>
     </div>
 
     <script>
-        // --- Firebase Config ---
+        // --- Firebase Config (LEO'S DB) ---
         const firebaseConfig = {
             apiKey: "AIzaSyBUFEmoyZKyiaiPekaw-gc-B5M5cgtW_WE",
             authDomain: "songplayer-c1058.firebaseapp.com",
@@ -100,144 +112,84 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // --- User Identification & Security ---
         let MY_ID = localStorage.getItem('jukebox_uid') || 'u' + Math.random().toString(36).substr(2, 9);
         localStorage.setItem('jukebox_uid', MY_ID);
-        let CURRENT_ROOM = "", player, queue = [];
+        let CURRENT_ROOM = "", queue = [];
+        const player = document.getElementById('main-player');
+        const seekSlider = document.getElementById('seek-slider');
+        const volumeSlider = document.getElementById('volume-slider');
+        const hostTime = document.getElementById('host-time');
 
-        // Check Blacklist
+        // --- Ad-Free Proxy Engine ---
+        const instances = ['https://invidious.lunar.icu', 'https://inv.riverside.rocks', 'https://invidious.projectsegfau.lt'];
+        let currentInstance = instances[0];
+
+        // --- Security Check (Ban System) ---
         db.ref('blacklist/' + MY_ID).on('value', s => {
-            if(s.val()) {
-                document.body.innerHTML = `<div style="background:#000; color:red; height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; text-align:center; padding:20px;">
-                    <h1 style="letter-spacing:10px;">BANNED</h1>
-                    <p style="color:#444;">Your access has been restricted by the administrator.</p>
-                </div>`;
-            }
+            if(s.val()) document.body.innerHTML = `<div style="height:100vh; display:flex; align-items:center; justify-content:center; background:#000; color:red; text-align:center;"><h1>BANNED BY DEV</h1></div>`;
         });
 
-        // --- DEV SYSTEM ---
-        function askDev() {
-            if(prompt("Enter Dev Password:") === "1234") {
-                document.getElementById('setup').classList.add('hidden');
-                document.getElementById('admin-view').classList.remove('hidden');
-                loadAdminMonitor();
-            }
-        }
-
-        function loadAdminMonitor() {
-            db.ref('rooms').on('value', s => {
-                const rooms = s.val();
-                const list = document.getElementById('room-list');
-                if(!rooms) { list.innerHTML = "No active rooms."; return; }
-                
-                let html = '';
-                Object.keys(rooms).forEach(id => {
-                    const p = rooms[id].playing || { title: 'Idle', vid: '' };
-                    const guests = rooms[id].guests || {};
-                    html += `
-                    <div class="admin-card">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                            <b style="color:var(--accent)">ROOM: ${id}</b>
-                            <button onclick="adminDelete('${id}')" class="ban-btn" style="background:none; border:1px solid red; color:red;">CLOSE ROOM</button>
-                        </div>
-                        <small style="color:gray;">PLAYING: ${p.title}</small>
-                        <div style="margin-top:10px; border-top:1px solid #222; padding-top:10px;">
-                            <small style="color:var(--dim)">USERS IN ROOM:</small>
-                            ${Object.keys(guests).map(gId => `
-                                <div style="display:flex; justify-content:space-between; margin-top:5px; font-size:11px;">
-                                    <span>ID: ${gId.substr(0,8)}...</span>
-                                    <button onclick="banUser('${gId}')" class="ban-btn">BAN USER</button>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>`;
-                });
-                list.innerHTML = html;
-            });
-        }
-        function banUser(uid) { if(confirm("Ban this user permanently?")) db.ref('blacklist/'+uid).set(true); }
-        function adminDelete(id) { if(confirm("Close this room?")) db.ref('rooms/'+id).remove(); }
-
-        // --- CORE SYSTEM ---
         function initHost() {
             CURRENT_ROOM = Math.floor(1000 + Math.random() * 9000).toString();
             document.getElementById('setup').classList.add('hidden');
             document.getElementById('host-view').classList.remove('hidden');
             document.getElementById('host-pin').innerText = CURRENT_ROOM;
-            new QRCode(document.getElementById("qrcode"), { text: window.location.href.split('?')[0] + "?room=" + CURRENT_ROOM, width: 60, height: 60 });
-            const t = document.createElement('script'); t.src = "https://www.youtube.com/iframe_api"; document.body.appendChild(t);
+            new QRCode(document.getElementById("qrcode"), { text: window.location.href.split('?')[0] + "?room=" + CURRENT_ROOM, width: 65, height: 65 });
+            
+            player.onended = () => skip();
+            player.ontimeupdate = updateControls;
             startSync(true);
         }
 
-        function onYouTubeIframeAPIReady() {
-            player = new YT.Player('player', { 
-                height:'100%', width:'100%', 
-                playerVars:{ 'autoplay':1, 'controls':1, 'modestbranding':1 },
-                events: { 
-                    'onStateChange': (e) => { if(e.data === 0) skip(); },
-                    'onReady': () => { setInterval(updateProgress, 1000); }
-                }
-            });
+        // --- Control Functions ---
+        function togglePlay() {
+            if(player.paused) { player.play(); document.getElementById('play-btn').innerText = "⏸️"; }
+            else { player.pause(); document.getElementById('play-btn').innerText = "▶️"; }
         }
 
-        function updateProgress() {
-            if(player && player.getCurrentTime) {
-                db.ref('rooms/'+CURRENT_ROOM+'/playing').update({ 
-                    cur: player.getCurrentTime(), 
-                    dur: player.getDuration() 
-                });
-            }
+        volumeSlider.oninput = (e) => player.volume = e.target.value;
+        seekSlider.oninput = (e) => player.currentTime = (e.target.value / 100) * player.duration;
+
+        function updateControls() {
+            if(!player.duration) return;
+            const val = (player.currentTime / player.duration) * 100;
+            seekSlider.value = val;
+            hostTime.innerText = `${formatTime(player.currentTime)} / ${formatTime(player.duration)}`;
+            // Sync progress to Guests
+            db.ref('rooms/'+CURRENT_ROOM+'/playing').update({ cur: player.currentTime, dur: player.duration });
         }
 
         function startSync(isHost) {
             db.ref('rooms/'+CURRENT_ROOM+'/queue').on('value', s => {
                 const d = s.val(); queue = d ? Object.entries(d).map(([k, v]) => ({ k, ...v })) : [];
                 if(isHost) renderHostQueue();
-                if(isHost && player && queue.length > 0) {
-                    const st = player.getPlayerState();
-                    if(st === -1 || st === 0 || st === 5) playNext();
-                }
+                if(isHost && player.paused && queue.length > 0 && player.src === "") playNext();
             });
 
             db.ref('rooms/'+CURRENT_ROOM+'/playing').on('value', s => {
-                const data = s.val(); if(!data || isHost) return;
-                document.getElementById('g-title').innerText = data.title;
-                document.getElementById('g-cover').src = `https://img.youtube.com/vi/${data.vid}/maxresdefault.jpg`;
-                document.getElementById('progress-bar').style.width = (data.cur / data.dur * 100) + "%";
-                document.getElementById('time-cur').innerText = formatTime(data.cur);
-                document.getElementById('time-dur').innerText = formatTime(data.dur);
+                const d = s.val(); if(!d || isHost) return;
+                document.getElementById('g-title').innerText = d.title;
+                document.getElementById('g-cover').src = `https://img.youtube.com/vi/${d.vid}/maxresdefault.jpg`;
+                document.getElementById('progress-bar').style.width = (d.cur / d.dur * 100) + "%";
+                document.getElementById('time-cur').innerText = formatTime(d.cur);
+                document.getElementById('time-dur').innerText = formatTime(d.dur);
             });
         }
 
-        function renderHostQueue() {
-            document.getElementById('host-q').innerHTML = queue.slice(1).map(item => `
-                <div class="q-item">
-                    <img src="https://img.youtube.com/vi/${item.vid}/mqdefault.jpg">
-                    <div class="q-title">${item.title}</div>
-                    <button onclick="removeSong('${item.k}')" style="background:none; border:none; color:red; cursor:pointer;">×</button>
-                </div>
-            `).join('');
-        }
-
-        function removeSong(key) { db.ref('rooms/'+CURRENT_ROOM+'/queue/'+key).remove(); }
         function playNext() {
             if(queue.length > 0) {
-                player.loadVideoById(queue[0].vid);
-                db.ref('rooms/'+CURRENT_ROOM+'/playing').set({ vid: queue[0].vid, title: queue[0].title, cur:0, dur:0 });
-            }
+                const vid = queue[0].vid;
+                player.src = `${currentInstance}/latest_version?id=${vid}&itag=22`;
+                player.play().catch(() => {
+                    currentInstance = instances[(instances.indexOf(currentInstance)+1)%instances.length];
+                    playNext();
+                });
+                db.ref('rooms/'+CURRENT_ROOM+'/playing').set({ vid, title: queue[0].title, cur:0, dur:0 });
+            } else { player.src = ""; }
         }
 
-        function skip() { if(queue.length > 0) db.ref('rooms/'+CURRENT_ROOM+'/queue/'+queue[0].k).remove(); }
-        function showJoin() { document.getElementById('main-actions').classList.add('hidden'); document.getElementById('join-box').classList.remove('hidden'); }
-        
-        function initGuest() {
-            CURRENT_ROOM = document.getElementById('pin-in').value;
-            if(!CURRENT_ROOM) return;
-            db.ref('rooms/' + CURRENT_ROOM + '/guests/' + MY_ID).set(true);
-            document.getElementById('setup').classList.add('hidden');
-            document.getElementById('guest-view').classList.remove('hidden');
-            startSync(false);
-        }
+        function skip() { if(queue.length > 0) db.ref('rooms/'+CURRENT_ROOM+'/queue/'+queue[0].k).remove(); playNext(); }
+        function removeSong(key) { db.ref('rooms/'+CURRENT_ROOM+'/queue/'+key).remove(); }
 
         async function addSong() {
             const url = document.getElementById('song-url').value;
@@ -249,7 +201,33 @@
                 document.getElementById('song-url').value = "";
             }
         }
+
+        // --- Helpers & UI ---
         function formatTime(s) { const m=Math.floor(s/60), sec=Math.floor(s%60); return `${m}:${sec<10?'0'+sec:sec}`; }
+        function showJoin() { document.getElementById('main-actions').classList.add('hidden'); document.getElementById('join-box').classList.remove('hidden'); }
+        function initGuest() { CURRENT_ROOM = document.getElementById('pin-in').value; db.ref('rooms/'+CURRENT_ROOM+'/guests/'+MY_ID).set(true); document.getElementById('setup').classList.add('hidden'); document.getElementById('guest-view').classList.remove('hidden'); startSync(false); }
+        function renderHostQueue() { document.getElementById('host-q').innerHTML = queue.slice(1).map(item => `<div class="q-item"><img src="https://img.youtube.com/vi/${item.vid}/mqdefault.jpg"><div class="q-title">${item.title}</div><button onclick="removeSong('${item.k}')" style="background:none; border:none; color:red; cursor:pointer;">×</button></div>`).join(''); }
+        
+        // --- Dev Functions ---
+        function askDev() { if(prompt("Dev Password:")==="1234") { document.getElementById('setup').classList.add('hidden'); document.getElementById('admin-view').classList.remove('hidden'); loadAdminMonitor(); } }
+        function loadAdminMonitor() {
+            db.ref('rooms').on('value', s => {
+                const rooms = s.val(); const list = document.getElementById('room-list');
+                if(!rooms) { list.innerHTML = "No active rooms."; return; }
+                list.innerHTML = Object.keys(rooms).map(id => `
+                    <div style="background:#111; padding:15px; border-radius:10px; margin-bottom:10px; border:1px solid #222;">
+                        <b>ROOM: ${id}</b><br>
+                        ${Object.keys(rooms[id].guests || {}).map(gId => `
+                            <div style="display:flex; justify-content:space-between; margin-top:5px; font-size:11px;">
+                                <span>User: ${gId.substr(0,8)}...</span>
+                                <button onclick="banUser('${gId}')" style="color:red; background:none; border:1px solid red; border-radius:4px; cursor:pointer;">BAN</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                `).join('');
+            });
+        }
+        function banUser(uid) { if(confirm("Ban permanently?")) db.ref('blacklist/'+uid).set(true); }
     </script>
 </body>
 </html>
