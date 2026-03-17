@@ -3,34 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jukebox Pro </title>
+    <title>Jukebox Pro</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
     <style>
         :root { --bg: #050505; --accent: #00ff88; --text: #ffffff; --dim: #666; --card: #111; --danger: #ff4444; }
-        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; overflow: hidden; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; overflow-x: hidden; }
         .hidden { display: none !important; }
-        .container { max-width: 400px; margin: 0 auto; padding: 20px; text-align: center; height: 100vh; display: flex; flex-direction: column; justify-content: center; }
-        #host-view { display: grid; grid-template-columns: 1fr 400px; height: 100vh; } /* ขยาย Sidebar นิดหน่อย */
+        
+        /* Layout */
+        .container { max-width: 400px; margin: 0 auto; padding: 20px; text-align: center; min-height: 100vh; }
+        #host-view { display: grid; grid-template-columns: 1fr 400px; height: 100vh; }
+        
+        /* Video & Controls (Host) */
         .video-container { background: #000; position: relative; display: flex; align-items: center; justify-content: center; }
         #player { pointer-events: none; width: 100%; height: 80%; }
         .controls-bar { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); padding: 12px 25px; border-radius: 40px; display: flex; align-items: center; gap: 15px; width: 85%; backdrop-filter: blur(15px); border: 1px solid #222; z-index: 10; }
-        .seek-slider { flex: 1; accent-color: var(--accent); cursor: pointer; }
-        .volume-slider { width: 70px; accent-color: var(--accent); cursor: pointer; }
-        .time-display { font-size: 11px; font-family: monospace; color: var(--accent); min-width: 90px; }
-        .ctrl-btn { background: none; border: none; color: #fff; cursor: pointer; font-size: 18px; }
-        .sidebar { background: #080808; border-left: 1px solid #151515; padding: 30px; overflow-y: auto; text-align: center; } /* ขยาย Padding และจัดกลาง */
+        
+        /* Sidebar & Elements */
+        .sidebar { background: #080808; border-left: 1px solid #151515; padding: 30px; overflow-y: auto; text-align: center; }
         .btn-minimal { background: rgba(255,255,255,0.03); border: 1px solid #222; color: #fff; padding: 14px; border-radius: 12px; cursor: pointer; font-size: 11px; width: 100%; transition: 0.3s; }
         .btn-minimal:hover { border-color: var(--accent); color: var(--accent); }
         .input-minimal { width: 100%; padding: 14px; background: #0a0a0a; border: 1px solid #222; color: #fff; border-radius: 12px; margin-bottom: 15px; text-align: center; outline: none; }
-        .q-item { display: flex; align-items: center; gap: 12px; background: #111; padding: 10px; border-radius: 10px; margin-bottom: 10px; }
+        
+        /* Queue Items (Both Host & Guest) */
+        .q-item { display: flex; align-items: center; gap: 12px; background: #111; padding: 10px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #1a1a1a; }
         .q-item img { width: 45px; border-radius: 5px; }
-        .q-title { font-size: 11px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left;}
-        #g-cover { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 20px; margin-bottom: 25px; }
+        .q-title { font-size: 11px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; color: #eee; }
+        
+        /* Guest Specific */
+        #g-cover { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .progress-container { width: 100%; background: #222; height: 4px; border-radius: 2px; margin: 15px 0; }
         #progress-bar { background: var(--accent); height: 100%; width: 0%; border-radius: 2px; }
+        .queue-badge { background: var(--accent); color: #000; padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: bold; margin-bottom: 15px; display: inline-block; }
+        .section-label { font-size: 10px; color: var(--dim); text-align: left; letter-spacing: 2px; text-transform: uppercase; margin: 25px 0 10px 0; }
+        
+        /* UI Utilities */
+        .seek-slider { flex: 1; accent-color: var(--accent); cursor: pointer; }
+        .volume-slider { width: 70px; accent-color: var(--accent); cursor: pointer; }
+        .time-display { font-size: 11px; font-family: monospace; color: var(--accent); min-width: 90px; }
     </style>
 </head>
 <body>
@@ -38,7 +51,7 @@
     <div id="setup" class="container">
         <h1 style="letter-spacing: 12px; font-weight: 200; margin-bottom: 50px; color: var(--accent);">JUKEBOX</h1>
         <div id="main-actions">
-            <button class="btn-minimal" onclick="initHost()">CREATE HOST (STANDARD)</button>
+            <button class="btn-minimal" onclick="initHost()">CREATE HOST</button>
             <button class="btn-minimal" style="margin-top: 15px;" onclick="showJoin()">JOIN SESSION</button>
         </div>
         <div id="join-box" class="hidden">
@@ -51,10 +64,9 @@
         <div class="video-container">
             <div id="player"></div>
             <div class="controls-bar">
-                <button class="ctrl-btn" onclick="togglePlay()" id="play-btn">⏸️</button>
+                <button class="btn-minimal" style="width:auto; padding:5px 15px;" onclick="togglePlay()" id="play-btn">⏸️</button>
                 <div class="time-display" id="host-time">0:00 / 0:00</div>
                 <input type="range" id="seek-slider" class="seek-slider" value="0" step="0.1">
-                <span>🔊</span>
                 <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" step="1" value="100">
             </div>
         </div>
@@ -63,23 +75,29 @@
                 <small style="color:var(--dim)">ROOM PIN</small>
                 <div id="host-pin" style="font-size: 48px; font-weight: 900; color: var(--accent);">----</div>
             </div>
-            
-            <div id="qrcode" style="background:#fff; padding:15px; border-radius:10px; display: inline-block; margin-bottom: 30px;"></div>
-            
-            <p style="font-size: 10px; color: var(--dim); text-align: left; letter-spacing: 1px;">UPCOMING QUEUE</p>
+            <div id="qrcode" style="background:#fff; padding:10px; border-radius:8px; display: inline-block; margin-bottom: 30px;"></div>
+            <p class="section-label">UPCOMING QUEUE</p>
             <div id="host-q"></div>
-            <button class="btn-minimal" onclick="skip()" style="margin-top:30px;">SKIP SONG ⏭️</button>
+            <button class="btn-minimal" onclick="skip()" style="margin-top:30px; color: var(--danger); border-color: var(--danger);">SKIP SONG ⏭️</button>
         </div>
     </div>
 
     <div id="guest-view" class="hidden container">
+        <div id="my-q-pos" class="hidden"></div>
         <img id="g-cover" src="">
-        <h3 id="g-title" style="text-align: left;">Waiting...</h3>
+        <h3 id="g-title" style="text-align: left; margin: 0; font-size: 18px;">Waiting for Host...</h3>
+        
         <div class="progress-container"><div id="progress-bar"></div></div>
-        <div style="display:flex; justify-content: space-between; font-size: 11px; color: var(--dim);"><span id="time-cur">0:00</span><span id="time-dur">0:00</span></div>
-        <input type="text" id="song-url" placeholder="Paste YouTube Link" class="input-minimal" style="margin-top: 40px;">
+        <div style="display:flex; justify-content: space-between; font-size: 10px; color: var(--dim); font-family: monospace; margin-bottom: 20px;">
+            <span id="time-cur">0:00</span><span id="time-dur">0:00</span>
+        </div>
+
+        <input type="text" id="song-url" placeholder="Paste YouTube Link" class="input-minimal">
         <button class="btn-minimal" onclick="addSong()">ADD TO QUEUE</button>
-    </div>
+
+        <p class="section-label">UPCOMING QUEUE</p>
+        <div id="guest-q"></div>
+        <div style="height: 50px;"></div> </div>
 
     <script>
         const firebaseConfig = {
@@ -93,22 +111,13 @@
 
         let MY_ID = localStorage.getItem('jukebox_uid') || 'u' + Math.random().toString(36).substr(2, 9);
         localStorage.setItem('jukebox_uid', MY_ID);
-        let CURRENT_ROOM = "", queue = [], ytPlayer, isApiReady = false;
+        let CURRENT_ROOM = "", queue = [], ytPlayer;
 
-        function onYouTubeIframeAPIReady() { isApiReady = true; }
-
-        // --- ระบบ Auto-Join เมื่อสแกนลิงก์ ---
         function checkAutoJoin() {
             const urlParams = new URLSearchParams(window.location.search);
-            const roomFromUrl = urlParams.get('room');
-            if (roomFromUrl && roomFromUrl.length === 4) {
-                CURRENT_ROOM = roomFromUrl;
-                document.getElementById('setup').classList.add('hidden');
-                document.getElementById('guest-view').classList.remove('hidden');
-                startSync(false);
-            }
+            const r = urlParams.get('room');
+            if (r) { CURRENT_ROOM = r; document.getElementById('setup').classList.add('hidden'); document.getElementById('guest-view').classList.remove('hidden'); startSync(false); }
         }
-        // เรียกใช้ฟังก์ชัน Auto-Join ทันทีเมื่อโหลดหน้าเว็บ
         checkAutoJoin();
 
         function initHost() {
@@ -116,51 +125,26 @@
             document.getElementById('setup').classList.add('hidden');
             document.getElementById('host-view').classList.remove('hidden');
             document.getElementById('host-pin').innerText = CURRENT_ROOM;
-            
-            // [2] ขยายขนาด QR Code จาก 65 เป็น 200 พิกเซล
-            const hostUrl = window.location.href.split('?')[0] + "?room=" + CURRENT_ROOM;
-            new QRCode(document.getElementById("qrcode"), { text: hostUrl, width: 200, height: 200 });
-            
-            ytPlayer = new YT.Player('player', {
-                height: '100%', width: '100%',
-                playerVars: { 'autoplay': 1, 'controls': 0, 'modestbranding': 1, 'rel': 0 },
-                events: { 'onStateChange': onPlayerStateChange }
-            });
-
+            new QRCode(document.getElementById("qrcode"), { text: window.location.href.split('?')[0] + "?room=" + CURRENT_ROOM, width: 180, height: 180 });
+            ytPlayer = new YT.Player('player', { height: '100%', width: '100%', playerVars: { 'autoplay': 1, 'controls': 0, 'modestbranding': 1 }, events: { 'onStateChange': (e) => { if(e.data == YT.PlayerState.ENDED) skip(); } } });
             setInterval(syncProgress, 1000);
             startSync(true);
         }
 
-        function onPlayerStateChange(event) {
-            if (event.data == YT.PlayerState.ENDED) skip();
-        }
-
         function syncProgress() {
             if(ytPlayer && ytPlayer.getCurrentTime) {
-                const cur = ytPlayer.getCurrentTime();
-                const dur = ytPlayer.getDuration();
+                const cur = ytPlayer.getCurrentTime(); const dur = ytPlayer.getDuration();
                 document.getElementById('host-time').innerText = `${formatTime(cur)} / ${formatTime(dur)}`;
                 document.getElementById('seek-slider').value = (cur/dur)*100 || 0;
                 db.ref('rooms/'+CURRENT_ROOM+'/playing').update({ cur, dur });
             }
         }
 
-        function togglePlay() {
-            const state = ytPlayer.getPlayerState();
-            if(state == 1) { ytPlayer.pauseVideo(); document.getElementById('play-btn').innerText = "▶️"; }
-            else { ytPlayer.playVideo(); document.getElementById('play-btn').innerText = "⏸️"; }
-        }
-
-        document.getElementById('volume-slider').oninput = (e) => ytPlayer.setVolume(e.target.value);
-        document.getElementById('seek-slider').oninput = (e) => ytPlayer.seekTo((e.target.value/100)*ytPlayer.getDuration());
-
         function startSync(isHost) {
             db.ref('rooms/'+CURRENT_ROOM+'/queue').on('value', s => {
                 const d = s.val(); queue = d ? Object.entries(d).map(([k, v]) => ({ k, ...v })) : [];
-                if(isHost) {
-                    renderHostQueue();
-                    if(ytPlayer && ytPlayer.getPlayerState && ytPlayer.getPlayerState() != 1 && queue.length > 0) playNext();
-                }
+                renderQueues(isHost);
+                if(isHost && ytPlayer && ytPlayer.getPlayerState && ytPlayer.getPlayerState() != 1 && queue.length > 0) playNext();
             });
 
             db.ref('rooms/'+CURRENT_ROOM+'/playing').on('value', s => {
@@ -173,30 +157,48 @@
             });
         }
 
-        function playNext() {
-            if(queue.length > 0) {
-                const vid = queue[0].vid;
-                ytPlayer.loadVideoById(vid);
-                db.ref('rooms/'+CURRENT_ROOM+'/playing').set({ vid, title: queue[0].title, cur:0, dur:0 });
+        function renderQueues(isHost) {
+            const qHTML = queue.slice(1).map(item => `
+                <div class="q-item">
+                    <img src="https://img.youtube.com/vi/${item.vid}/mqdefault.jpg">
+                    <div class="q-title">${item.title}</div>
+                    ${isHost ? `<button onclick="removeSong('${item.k}')" style="background:none; border:none; color:red; cursor:pointer;">×</button>` : ''}
+                </div>
+            `).join('');
+
+            if(isHost) {
+                document.getElementById('host-q').innerHTML = qHTML;
+            } else {
+                document.getElementById('guest-q').innerHTML = qHTML || '<p style="font-size:11px; color:#333;">Queue is empty</p>';
+                // Update My Position Badge
+                const myFirst = queue.map((s, i) => ({...s, i})).find(s => s.uid === MY_ID);
+                const b = document.getElementById('my-q-pos');
+                if(myFirst) { b.innerHTML = `<div class="queue-badge">YOUR SONG: ${myFirst.i} IN QUEUE</div>`; b.classList.remove('hidden'); }
+                else b.classList.add('hidden');
             }
         }
 
+        function playNext() { if(queue.length > 0) { ytPlayer.loadVideoById(queue[0].vid); db.ref('rooms/'+CURRENT_ROOM+'/playing').set({ vid: queue[0].vid, title: queue[0].title, cur:0, dur:0 }); } }
         function skip() { if(queue.length > 0) db.ref('rooms/'+CURRENT_ROOM+'/queue/'+queue[0].k).remove(); playNext(); }
+        function removeSong(k) { db.ref('rooms/'+CURRENT_ROOM+'/queue/'+k).remove(); }
         async function addSong() {
-            const url = document.getElementById('song-url').value;
-            const vid = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/)?.[1];
-            if(vid) {
-                const res = await fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${vid}`);
-                const data = await res.json();
-                db.ref('rooms/'+CURRENT_ROOM+'/queue').push({ vid, title: data.title });
+            const v = document.getElementById('song-url').value;
+            const id = v.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/)?.[1];
+            if(id) {
+                const r = await fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${id}`);
+                const d = await r.json();
+                db.ref('rooms/'+CURRENT_ROOM+'/queue').push({ vid: id, title: d.title, uid: MY_ID });
                 document.getElementById('song-url').value = "";
             }
         }
 
+        function togglePlay() { const s = ytPlayer.getPlayerState(); if(s==1){ytPlayer.pauseVideo(); document.getElementById('play-btn').innerText="▶️";}else{ytPlayer.playVideo(); document.getElementById('play-btn').innerText="⏸️";} }
         function formatTime(s) { const m=Math.floor(s/60), sec=Math.floor(s%60); return `${m}:${sec<10?'0'+sec:sec}`; }
         function showJoin() { document.getElementById('main-actions').classList.add('hidden'); document.getElementById('join-box').classList.remove('hidden'); }
         function initGuest() { CURRENT_ROOM = document.getElementById('pin-in').value; document.getElementById('setup').classList.add('hidden'); document.getElementById('guest-view').classList.remove('hidden'); startSync(false); }
-        function renderHostQueue() { document.getElementById('host-q').innerHTML = queue.slice(1).map(item => `<div class="q-item"><img src="https://img.youtube.com/vi/${item.vid}/mqdefault.jpg"><div class="q-title">${item.title}</div></div>`).join(''); }
+        document.getElementById('volume-slider').oninput = (e) => ytPlayer.setVolume(e.target.value);
+        document.getElementById('seek-slider').oninput = (e) => ytPlayer.seekTo((e.target.value/100)*ytPlayer.getDuration());
     </script>
+    <script src="https://www.youtube.com/iframe_api"></script>
 </body>
 </html>
