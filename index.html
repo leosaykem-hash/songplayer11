@@ -3,45 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jukebox Pro - Ultra Ad-Free</title>
+    <title>Jukebox Pro - Standard</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
     <style>
         :root { --bg: #050505; --accent: #00ff88; --text: #ffffff; --dim: #666; --card: #111; --danger: #ff4444; }
         body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; overflow: hidden; }
         .hidden { display: none !important; }
-        
-        /* Layouts */
         .container { max-width: 400px; margin: 0 auto; padding: 20px; text-align: center; height: 100vh; display: flex; flex-direction: column; justify-content: center; }
         #host-view { display: grid; grid-template-columns: 1fr 350px; height: 100vh; }
-        
-        /* Video Player Styling */
-        .video-container { background: #000; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        video { width: 95%; max-height: 85%; border-radius: 15px; box-shadow: 0 0 40px rgba(0, 255, 136, 0.2); }
-        
-        /* Custom Controls */
-        .controls-bar { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); padding: 12px 25px; border-radius: 40px; display: flex; align-items: center; gap: 15px; width: 85%; backdrop-filter: blur(15px); border: 1px solid #222; z-index: 10; transition: 0.3s; }
-        .seek-slider { flex: 1; accent-color: var(--accent); cursor: pointer; height: 5px; }
-        .volume-slider { width: 70px; accent-color: var(--accent); cursor: pointer; height: 5px; }
+        .video-container { background: #000; position: relative; display: flex; align-items: center; justify-content: center; }
+        #player { pointer-events: none; width: 100%; height: 80%; } /* บล็อคการคลิกที่จอเพื่อไม่ให้โฆษณาเด้งง่าย */
+        .controls-bar { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); padding: 12px 25px; border-radius: 40px; display: flex; align-items: center; gap: 15px; width: 85%; backdrop-filter: blur(15px); border: 1px solid #222; z-index: 10; }
+        .seek-slider { flex: 1; accent-color: var(--accent); cursor: pointer; }
+        .volume-slider { width: 70px; accent-color: var(--accent); cursor: pointer; }
         .time-display { font-size: 11px; font-family: monospace; color: var(--accent); min-width: 90px; }
-        .ctrl-btn { background: none; border: none; color: #fff; cursor: pointer; font-size: 18px; transition: 0.2s; }
-        .ctrl-btn:hover { transform: scale(1.2); color: var(--accent); }
-
-        /* Sidebar & Elements */
+        .ctrl-btn { background: none; border: none; color: #fff; cursor: pointer; font-size: 18px; }
         .sidebar { background: #080808; border-left: 1px solid #151515; padding: 25px; overflow-y: auto; }
-        .btn-minimal { background: rgba(255,255,255,0.03); border: 1px solid #222; color: #fff; padding: 14px; border-radius: 12px; cursor: pointer; font-size: 11px; width: 100%; transition: 0.3s; letter-spacing: 1px; }
+        .btn-minimal { background: rgba(255,255,255,0.03); border: 1px solid #222; color: #fff; padding: 14px; border-radius: 12px; cursor: pointer; font-size: 11px; width: 100%; transition: 0.3s; }
         .btn-minimal:hover { border-color: var(--accent); color: var(--accent); }
         .input-minimal { width: 100%; padding: 14px; background: #0a0a0a; border: 1px solid #222; color: #fff; border-radius: 12px; margin-bottom: 15px; text-align: center; outline: none; }
-        .q-item { display: flex; align-items: center; gap: 12px; background: #111; padding: 10px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #1a1a1a; }
+        .q-item { display: flex; align-items: center; gap: 12px; background: #111; padding: 10px; border-radius: 10px; margin-bottom: 10px; }
         .q-item img { width: 45px; border-radius: 5px; }
         .q-title { font-size: 11px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-        /* Guest Player UI */
-        #g-cover { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); margin-bottom: 25px; }
+        #g-cover { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 20px; margin-bottom: 25px; }
         .progress-container { width: 100%; background: #222; height: 4px; border-radius: 2px; margin: 15px 0; }
         #progress-bar { background: var(--accent); height: 100%; width: 0%; border-radius: 2px; }
-        .dev-link { font-size: 9px; color: #111; margin-top: 40px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -49,31 +38,24 @@
     <div id="setup" class="container">
         <h1 style="letter-spacing: 12px; font-weight: 200; margin-bottom: 50px; color: var(--accent);">JUKEBOX</h1>
         <div id="main-actions">
-            <button class="btn-minimal" onclick="initHost()">CREATE HOST (NO ADS)</button>
-            <button class="btn-minimal" style="margin-top: 15px;" onclick="showJoin()">JOIN AS GUEST</button>
+            <button class="btn-minimal" onclick="initHost()">CREATE HOST (STANDARD)</button>
+            <button class="btn-minimal" style="margin-top: 15px;" onclick="showJoin()">JOIN SESSION</button>
         </div>
         <div id="join-box" class="hidden">
-            <input type="text" id="pin-in" maxlength="4" placeholder="ENTER ROOM PIN" class="input-minimal">
-            <button class="btn-minimal" onclick="initGuest()">CONNECT NOW</button>
+            <input type="text" id="pin-in" maxlength="4" placeholder="ROOM PIN" class="input-minimal">
+            <button class="btn-minimal" onclick="initGuest()">CONNECT</button>
         </div>
-        <div class="dev-link" onclick="askDev()">are you dev?</div>
-    </div>
-
-    <div id="admin-view" class="hidden" style="padding: 40px; overflow-y:auto; height:100vh;">
-        <h2 style="color: var(--accent);">DEV MONITOR</h2>
-        <div id="room-list">Scanning...</div>
-        <button class="btn-minimal" onclick="location.reload()" style="width:200px; margin-top:20px;">BACK</button>
     </div>
 
     <div id="host-view" class="hidden">
         <div class="video-container">
-            <video id="main-player"></video>
+            <div id="player"></div>
             <div class="controls-bar">
                 <button class="ctrl-btn" onclick="togglePlay()" id="play-btn">⏸️</button>
                 <div class="time-display" id="host-time">0:00 / 0:00</div>
                 <input type="range" id="seek-slider" class="seek-slider" value="0" step="0.1">
-                <span style="font-size: 12px;">🔊</span>
-                <input type="range" id="volume-slider" class="volume-slider" min="0" max="1" step="0.01" value="1">
+                <span>🔊</span>
+                <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" step="1" value="100">
             </div>
         </div>
         <div class="sidebar">
@@ -81,28 +63,22 @@
                 <div><small style="color:var(--dim)">ROOM PIN</small><div id="host-pin" style="font-size: 32px; font-weight: 900; color: var(--accent);">----</div></div>
                 <div id="qrcode" style="background:#fff; padding:5px; border-radius:5px;"></div>
             </div>
-            <p style="font-size: 10px; color: var(--dim); letter-spacing: 2px;">UPCOMING QUEUE</p>
+            <p style="font-size: 10px; color: var(--dim);">QUEUE</p>
             <div id="host-q"></div>
-            <button class="btn-minimal" onclick="skip()" style="margin-top:30px; border-color: var(--danger); color: var(--danger);">SKIP SONG ⏭️</button>
+            <button class="btn-minimal" onclick="skip()" style="margin-top:30px;">SKIP SONG ⏭️</button>
         </div>
     </div>
 
-    <div id="guest-view" class="hidden container" style="justify-content: flex-start; padding-top: 50px;">
+    <div id="guest-view" class="hidden container">
         <img id="g-cover" src="">
-        <div style="text-align: left; width: 100%;">
-            <h3 id="g-title" style="margin: 0; font-size: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Waiting...</h3>
-            <p style="color: var(--dim); margin: 5px 0 25px 0; font-size: 14px;">Playing Ad-Free</p>
-        </div>
+        <h3 id="g-title" style="text-align: left;">Waiting...</h3>
         <div class="progress-container"><div id="progress-bar"></div></div>
-        <div class="time-info" style="display:flex; justify-content: space-between; font-size: 11px; color: var(--dim); font-family: monospace;">
-            <span id="time-cur">0:00</span><span id="time-dur">0:00</span>
-        </div>
-        <input type="text" id="song-url" placeholder="Paste YouTube Link Here" class="input-minimal" style="margin-top: 40px;">
+        <div style="display:flex; justify-content: space-between; font-size: 11px; color: var(--dim);"><span id="time-cur">0:00</span><span id="time-dur">0:00</span></div>
+        <input type="text" id="song-url" placeholder="YouTube Link" class="input-minimal" style="margin-top: 40px;">
         <button class="btn-minimal" onclick="addSong()">ADD TO QUEUE</button>
     </div>
 
     <script>
-        // --- Firebase Config (LEO'S DB) ---
         const firebaseConfig = {
             apiKey: "AIzaSyBUFEmoyZKyiaiPekaw-gc-B5M5cgtW_WE",
             authDomain: "songplayer-c1058.firebaseapp.com",
@@ -114,20 +90,9 @@
 
         let MY_ID = localStorage.getItem('jukebox_uid') || 'u' + Math.random().toString(36).substr(2, 9);
         localStorage.setItem('jukebox_uid', MY_ID);
-        let CURRENT_ROOM = "", queue = [];
-        const player = document.getElementById('main-player');
-        const seekSlider = document.getElementById('seek-slider');
-        const volumeSlider = document.getElementById('volume-slider');
-        const hostTime = document.getElementById('host-time');
+        let CURRENT_ROOM = "", queue = [], ytPlayer, isApiReady = false;
 
-        // --- Ad-Free Proxy Engine ---
-        const instances = ['https://invidious.lunar.icu', 'https://inv.riverside.rocks', 'https://invidious.projectsegfau.lt'];
-        let currentInstance = instances[0];
-
-        // --- Security Check (Ban System) ---
-        db.ref('blacklist/' + MY_ID).on('value', s => {
-            if(s.val()) document.body.innerHTML = `<div style="height:100vh; display:flex; align-items:center; justify-content:center; background:#000; color:red; text-align:center;"><h1>BANNED BY DEV</h1></div>`;
-        });
+        function onYouTubeIframeAPIReady() { isApiReady = true; }
 
         function initHost() {
             CURRENT_ROOM = Math.floor(1000 + Math.random() * 9000).toString();
@@ -136,41 +101,53 @@
             document.getElementById('host-pin').innerText = CURRENT_ROOM;
             new QRCode(document.getElementById("qrcode"), { text: window.location.href.split('?')[0] + "?room=" + CURRENT_ROOM, width: 65, height: 65 });
             
-            player.onended = () => skip();
-            player.ontimeupdate = updateControls;
+            ytPlayer = new YT.Player('player', {
+                height: '100%', width: '100%',
+                playerVars: { 'autoplay': 1, 'controls': 0, 'modestbranding': 1, 'rel': 0 },
+                events: { 'onStateChange': onPlayerStateChange }
+            });
+
+            setInterval(syncProgress, 1000);
             startSync(true);
         }
 
-        // --- Control Functions ---
+        function onPlayerStateChange(event) {
+            if (event.data == YT.PlayerState.ENDED) skip();
+        }
+
+        function syncProgress() {
+            if(ytPlayer && ytPlayer.getCurrentTime) {
+                const cur = ytPlayer.getCurrentTime();
+                const dur = ytPlayer.getDuration();
+                document.getElementById('host-time').innerText = `${formatTime(cur)} / ${formatTime(dur)}`;
+                document.getElementById('seek-slider').value = (cur/dur)*100 || 0;
+                db.ref('rooms/'+CURRENT_ROOM+'/playing').update({ cur, dur });
+            }
+        }
+
         function togglePlay() {
-            if(player.paused) { player.play(); document.getElementById('play-btn').innerText = "⏸️"; }
-            else { player.pause(); document.getElementById('play-btn').innerText = "▶️"; }
+            const state = ytPlayer.getPlayerState();
+            if(state == 1) { ytPlayer.pauseVideo(); document.getElementById('play-btn').innerText = "▶️"; }
+            else { ytPlayer.playVideo(); document.getElementById('play-btn').innerText = "⏸️"; }
         }
 
-        volumeSlider.oninput = (e) => player.volume = e.target.value;
-        seekSlider.oninput = (e) => player.currentTime = (e.target.value / 100) * player.duration;
-
-        function updateControls() {
-            if(!player.duration) return;
-            const val = (player.currentTime / player.duration) * 100;
-            seekSlider.value = val;
-            hostTime.innerText = `${formatTime(player.currentTime)} / ${formatTime(player.duration)}`;
-            // Sync progress to Guests
-            db.ref('rooms/'+CURRENT_ROOM+'/playing').update({ cur: player.currentTime, dur: player.duration });
-        }
+        document.getElementById('volume-slider').oninput = (e) => ytPlayer.setVolume(e.target.value);
+        document.getElementById('seek-slider').oninput = (e) => ytPlayer.seekTo((e.target.value/100)*ytPlayer.getDuration());
 
         function startSync(isHost) {
             db.ref('rooms/'+CURRENT_ROOM+'/queue').on('value', s => {
                 const d = s.val(); queue = d ? Object.entries(d).map(([k, v]) => ({ k, ...v })) : [];
-                if(isHost) renderHostQueue();
-                if(isHost && player.paused && queue.length > 0 && player.src === "") playNext();
+                if(isHost) {
+                    renderHostQueue();
+                    if(ytPlayer && ytPlayer.getPlayerState && ytPlayer.getPlayerState() != 1 && queue.length > 0) playNext();
+                }
             });
 
             db.ref('rooms/'+CURRENT_ROOM+'/playing').on('value', s => {
                 const d = s.val(); if(!d || isHost) return;
                 document.getElementById('g-title').innerText = d.title;
                 document.getElementById('g-cover').src = `https://img.youtube.com/vi/${d.vid}/maxresdefault.jpg`;
-                document.getElementById('progress-bar').style.width = (d.cur / d.dur * 100) + "%";
+                document.getElementById('progress-bar').style.width = (d.cur/d.dur*100) + "%";
                 document.getElementById('time-cur').innerText = formatTime(d.cur);
                 document.getElementById('time-dur').innerText = formatTime(d.dur);
             });
@@ -179,18 +156,12 @@
         function playNext() {
             if(queue.length > 0) {
                 const vid = queue[0].vid;
-                player.src = `${currentInstance}/latest_version?id=${vid}&itag=22`;
-                player.play().catch(() => {
-                    currentInstance = instances[(instances.indexOf(currentInstance)+1)%instances.length];
-                    playNext();
-                });
+                ytPlayer.loadVideoById(vid);
                 db.ref('rooms/'+CURRENT_ROOM+'/playing').set({ vid, title: queue[0].title, cur:0, dur:0 });
-            } else { player.src = ""; }
+            }
         }
 
         function skip() { if(queue.length > 0) db.ref('rooms/'+CURRENT_ROOM+'/queue/'+queue[0].k).remove(); playNext(); }
-        function removeSong(key) { db.ref('rooms/'+CURRENT_ROOM+'/queue/'+key).remove(); }
-
         async function addSong() {
             const url = document.getElementById('song-url').value;
             const vid = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/)?.[1];
@@ -202,32 +173,10 @@
             }
         }
 
-        // --- Helpers & UI ---
         function formatTime(s) { const m=Math.floor(s/60), sec=Math.floor(s%60); return `${m}:${sec<10?'0'+sec:sec}`; }
         function showJoin() { document.getElementById('main-actions').classList.add('hidden'); document.getElementById('join-box').classList.remove('hidden'); }
-        function initGuest() { CURRENT_ROOM = document.getElementById('pin-in').value; db.ref('rooms/'+CURRENT_ROOM+'/guests/'+MY_ID).set(true); document.getElementById('setup').classList.add('hidden'); document.getElementById('guest-view').classList.remove('hidden'); startSync(false); }
-        function renderHostQueue() { document.getElementById('host-q').innerHTML = queue.slice(1).map(item => `<div class="q-item"><img src="https://img.youtube.com/vi/${item.vid}/mqdefault.jpg"><div class="q-title">${item.title}</div><button onclick="removeSong('${item.k}')" style="background:none; border:none; color:red; cursor:pointer;">×</button></div>`).join(''); }
-        
-        // --- Dev Functions ---
-        function askDev() { if(prompt("Dev Password:")==="1234") { document.getElementById('setup').classList.add('hidden'); document.getElementById('admin-view').classList.remove('hidden'); loadAdminMonitor(); } }
-        function loadAdminMonitor() {
-            db.ref('rooms').on('value', s => {
-                const rooms = s.val(); const list = document.getElementById('room-list');
-                if(!rooms) { list.innerHTML = "No active rooms."; return; }
-                list.innerHTML = Object.keys(rooms).map(id => `
-                    <div style="background:#111; padding:15px; border-radius:10px; margin-bottom:10px; border:1px solid #222;">
-                        <b>ROOM: ${id}</b><br>
-                        ${Object.keys(rooms[id].guests || {}).map(gId => `
-                            <div style="display:flex; justify-content:space-between; margin-top:5px; font-size:11px;">
-                                <span>User: ${gId.substr(0,8)}...</span>
-                                <button onclick="banUser('${gId}')" style="color:red; background:none; border:1px solid red; border-radius:4px; cursor:pointer;">BAN</button>
-                            </div>
-                        `).join('')}
-                    </div>
-                `).join('');
-            });
-        }
-        function banUser(uid) { if(confirm("Ban permanently?")) db.ref('blacklist/'+uid).set(true); }
+        function initGuest() { CURRENT_ROOM = document.getElementById('pin-in').value; document.getElementById('setup').classList.add('hidden'); document.getElementById('guest-view').classList.remove('hidden'); startSync(false); }
+        function renderHostQueue() { document.getElementById('host-q').innerHTML = queue.slice(1).map(item => `<div class="q-item"><img src="https://img.youtube.com/vi/${item.vid}/mqdefault.jpg"><div class="q-title">${item.title}</div></div>`).join(''); }
     </script>
 </body>
 </html>
